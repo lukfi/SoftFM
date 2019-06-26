@@ -39,6 +39,8 @@
 #include "FmDecode.h"
 #include "AudioOutput.h"
 
+#define strsignal(x) "TODO"
+
 using namespace std;
 
 
@@ -428,6 +430,7 @@ int main(int argc, char **argv)
     }
 
     // Catch Ctrl-C and SIGTERM
+    /*
     struct sigaction sigact;
     sigact.sa_handler = handle_sigterm;
     sigemptyset(&sigact.sa_mask);
@@ -440,6 +443,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "WARNING: can not install SIGTERM handler (%s)\n",
                 strerror(errno));
     }
+    */
 
     // Intentionally tune at a higher frequency to avoid DC offset.
     double tuner_freq = freq + 0.25 * ifrate;
