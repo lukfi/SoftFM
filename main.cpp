@@ -47,7 +47,6 @@ using namespace std;
 /** Flag is set on SIGINT / SIGTERM. */
 static atomic_bool stop_flag(false);
 
-
 /** Buffer to move sample data between threads. */
 template <class Element>
 class DataBuffer
@@ -300,10 +299,10 @@ int main(int argc, char **argv)
     double  ifrate  = 1.0e6;
     int     pcmrate = 48000;
     bool    stereo  = true;
-    enum OutputMode { MODE_RAW, MODE_WAV, MODE_ALSA };
-    OutputMode outmode = MODE_ALSA;
+    enum OutputMode { MODE_RAW, MODE_WAV, MODE_RTAUDIO };
+    OutputMode outmode = MODE_RTAUDIO;
     string  filename;
-    string  alsadev("default");
+//    string  alsadev("default");
     string  ppsfilename;
     FILE *  ppsfile = NULL;
     double  bufsecs = -1;
@@ -383,9 +382,9 @@ int main(int argc, char **argv)
                 filename = optarg;
                 break;
             case 'P':
-                outmode = MODE_ALSA;
-                if (optarg != NULL)
-                    alsadev = optarg;
+//                outmode = MODE_ALSA;
+//                if (optarg != NULL)
+//                    alsadev = optarg;
                 break;
             case 'T':
                 ppsfilename = optarg;
@@ -524,7 +523,7 @@ int main(int argc, char **argv)
     // Calculate number of samples in audio buffer.
     unsigned int outputbuf_samples = 0;
     if (bufsecs < 0 &&
-        (outmode == MODE_ALSA || (outmode == MODE_RAW && filename == "-"))) {
+        (outmode == MODE_RTAUDIO || (outmode == MODE_RAW && filename == "-"))) {
         // Set default buffer to 1 second for interactive output streams.
         outputbuf_samples = pcmrate;
     } else if (bufsecs > 0) {
@@ -568,10 +567,9 @@ int main(int argc, char **argv)
                     filename.c_str());
             audio_output.reset(new WavAudioOutput(filename, pcmrate, stereo));
             break;
-        case MODE_ALSA:
-            fprintf(stderr, "playing audio to ALSA device '%s'\n",
-                    alsadev.c_str());
-            audio_output.reset(new AlsaAudioOutput(alsadev, pcmrate, stereo));
+        case MODE_RTAUDIO:
+            fprintf(stderr, "playing audio to RTAudio default device\n"),
+            audio_output.reset(new RtAudioOutput(pcmrate, stereo));
             break;
     }
 
@@ -644,17 +642,26 @@ int main(int argc, char **argv)
                     " buf=%.1fs ",
                     buflen / nchannel / double(pcmrate));
         }
+        if (fm.stereo_detected())
+        {
+            fprintf(stderr, "stereo (level: %.4f)",
+                    fm.get_pilot_level());
+        }
+        else
+        {
+            fprintf(stderr, "                      ");
+        }
         fflush(stderr);
 
         // Show stereo status.
-        if (fm.stereo_detected() != got_stereo) {
-            got_stereo = fm.stereo_detected();
-            if (got_stereo)
-                fprintf(stderr, "\ngot stereo signal (pilot level = %f)\n",
-                        fm.get_pilot_level());
-            else
-                fprintf(stderr, "\nlost stereo signal\n");
-        }
+//        if (fm.stereo_detected() != got_stereo) {
+//            got_stereo = fm.stereo_detected();
+//            if (got_stereo)
+//                fprintf(stderr, "\ngot stereo signal (pilot level = %f)\n",
+//                        fm.get_pilot_level());
+//            else
+//                fprintf(stderr, "\nlost stereo signal\n");
+//        }
 
         // Write PPS markers.
         if (ppsfile != NULL) {

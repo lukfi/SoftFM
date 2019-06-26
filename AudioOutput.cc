@@ -41,8 +41,7 @@ using namespace std;
 /* ****************  class AudioOutput  **************** */
 
 // Encode a list of samples as signed 16-bit little-endian integers.
-void AudioOutput::samplesToInt16(const SampleVector& samples,
-                                 vector<uint8_t>& bytes)
+void AudioOutput::samplesToInt16(const SampleVector& samples, vector<uint8_t>& bytes)
 {
     bytes.resize(2 * samples.size());
 
@@ -57,6 +56,21 @@ void AudioOutput::samplesToInt16(const SampleVector& samples,
         unsigned long u = v;
         *(k++) = u & 0xff;
         *(k++) = (u >> 8) & 0xff;
+    }
+}
+
+void AudioOutput::samplesToInt16(const SampleVector& samples, LF::audio::AudioBuffer& bytes)
+{
+    uint32_t size = samples.size() * 2;
+    for (auto ss : samples)
+    {
+        Sample s = max(Sample(-1.0), min(Sample(1.0), ss));
+        long v = lrint(s * 32767);
+        unsigned long u = v;
+        uint8_t temp[2];
+        temp[0] = u & 0xff;
+        temp [1] = (u >> 8) & 0xff;
+        bytes.PushFramesBytes(temp, 2);
     }
 }
 
@@ -214,8 +228,8 @@ bool WavAudioOutput::write_header(unsigned int nsamples)
 
     enum wFormatTagId
     {
-        WAVE_FORMAT_PCM        = 0x0001,
-        WAVE_FORMAT_IEEE_FLOAT = 0x0003
+        eWAVE_FORMAT_PCM        = 0x0001,
+        eWAVE_FORMAT_IEEE_FLOAT = 0x0003
     };
 
     assert(nsamples % numberOfChannels == 0);
@@ -229,7 +243,7 @@ bool WavAudioOutput::write_header(unsigned int nsamples)
     encode_chunk_id    (wavHeader +  8, "WAVE");
     encode_chunk_id    (wavHeader + 12, "fmt ");
     set_value<uint32_t>(wavHeader + 16, 16);
-    set_value<uint16_t>(wavHeader + 20, WAVE_FORMAT_PCM);
+    set_value<uint16_t>(wavHeader + 20, eWAVE_FORMAT_PCM);
     set_value<uint16_t>(wavHeader + 22, numberOfChannels);
     set_value<uint32_t>(wavHeader + 24, sampleRate                                    ); // sample rate
     set_value<uint32_t>(wavHeader + 28, sampleRate * numberOfChannels * bytesPerSample); // byte rate
@@ -264,85 +278,28 @@ void WavAudioOutput::set_value(uint8_t * ptr, T value)
 }
 
 
-/* ****************  class AlsaAudioOutput  **************** */
+/* ****************  class RtAudioOutput  **************** */
 
-// Construct ALSA output stream.
-AlsaAudioOutput::AlsaAudioOutput(const std::string& devname,
-                                 unsigned int samplerate,
-                                 bool stereo)
+RtAudioOutput::RtAudioOutput(unsigned int samplerate, bool stereo) :
+    mAudioBuffer(LF::audio::AudioFormat_t::Sint16, static_cast<uint16_t>(samplerate), (stereo ? 2 : 1)),
+    mParameters(LF::audio::AudioFormat_t::Sint16, static_cast<uint16_t>(samplerate), (stereo ? 2 : 1)),
+    mPlayer(mParameters)
 {
-//    m_pcm = NULL;
-//    m_nchannels = stereo ? 2 : 1;
-
-//    int r = snd_pcm_open(&m_pcm, devname.c_str(),
-//                         SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);
-
-//    if (r < 0) {
-//        m_error = "can not open PCM device '" + devname + "' (" +
-//                  strerror(-r) + ")";
-//        m_zombie = true;
-//        return;
-//    }
-
-//    snd_pcm_nonblock(m_pcm, 0);
-
-//    r = snd_pcm_set_params(m_pcm,
-//                           SND_PCM_FORMAT_S16_LE,
-//                           SND_PCM_ACCESS_RW_INTERLEAVED,
-//                           m_nchannels,
-//                           samplerate,
-//                           1,               // allow soft resampling
-//                           500000);         // latency in us
-
-//    if (r < 0) {
-//        m_error = "can not set PCM parameters (";
-//        m_error += strerror(-r);
-//        m_error += ")";
-//        m_zombie = true;
-//    }
+    mPlayer.SetEndOfEmptyBuffer(false);
+    mPlayer.SetBuffer(&mAudioBuffer);
+    auto api = LF::audio::AudioDevice::GetDefaultApi();
+    mPlayer.SetOutputDevice(api, LF::audio::AudioDevice::GetDefaultOutDeviceId(api));
+    mPlayer.Start();
 }
 
-
-// Destructor.
-AlsaAudioOutput::~AlsaAudioOutput()
+RtAudioOutput::~RtAudioOutput()
 {
-    // Close device.
-//    if (m_pcm != NULL) {
-//        snd_pcm_close(m_pcm);
-//    }
+    mPlayer.Stop();
 }
 
-
-// Write audio data.
-bool AlsaAudioOutput::write(const SampleVector& samples)
+bool RtAudioOutput::write(const SampleVector& samples)
 {
-//    if (m_zombie)
-//        return false;
-
-//    // Convert samples to bytes.
-//    samplesToInt16(samples, m_bytebuf);
-
-//    // Write data.
-//    unsigned int p = 0;
-//    unsigned int n = samples.size() / m_nchannels;
-//    unsigned int framesize = 2 * m_nchannels;
-//    while (p < n) {
-
-//        int k = snd_pcm_writei(m_pcm,
-//                               m_bytebuf.data() + p * framesize, n - p);
-//        if (k < 0) {
-//            m_error = "write failed (";
-//            m_error += strerror(errno);
-//            m_error += ")";
-//            // After an underrun, ALSA keeps returning error codes until we
-//            // explicitly fix the stream.
-//            snd_pcm_recover(m_pcm, k, 0);
-//            return false;
-//        } else {
-//            p += k;
-//        }
-//    }
-
+    samplesToInt16(samples, mAudioBuffer);
     return true;
 }
 

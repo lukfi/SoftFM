@@ -380,7 +380,6 @@ void FmDecoder::process(const IQSampleVector& samples_in,
         m_deemph_stereo.process_inplace(m_buf_stereo);
 
         if (m_stereo_detected) {
-
             // Extract left/right channels from mono/stereo signals.
             stereo_to_left_right(m_buf_mono, m_buf_stereo, audio);
 

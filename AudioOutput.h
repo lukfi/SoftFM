@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 
+#include "audio/audiobuffer.h"
+#include "audio/audioplayer.h"
+
 #include "SoftFM.h"
 
 
@@ -44,8 +47,8 @@ protected:
     AudioOutput() : m_zombie(false) { }
 
     /** Encode a list of samples as signed 16-bit little-endian integers. */
-    static void samplesToInt16(const SampleVector& samples,
-                               std::vector<std::uint8_t>& bytes);
+    static void samplesToInt16(const SampleVector& samples, std::vector<std::uint8_t>& bytes);
+    static void samplesToInt16(const SampleVector& samples, LF::audio::AudioBuffer& bytes);
 
     std::string m_error;
     bool        m_zombie;
@@ -112,30 +115,18 @@ private:
     std::vector<std::uint8_t> m_bytebuf;
 };
 
-
-/** Write audio data to ALSA device. */
-class AlsaAudioOutput : public AudioOutput
+class RtAudioOutput : public AudioOutput
 {
 public:
+    RtAudioOutput(unsigned int samplerate, bool stereo);
 
-    /**
-     * Construct ALSA output stream.
-     *
-     * dename       :: ALSA PCM device
-     * samplerate   :: audio sample rate in Hz
-     * stereo       :: true if the output stream contains stereo data
-     */
-    AlsaAudioOutput(const std::string& devname,
-                    unsigned int samplerate,
-                    bool stereo);
+    ~RtAudioOutput();
 
-    ~AlsaAudioOutput();
     bool write(const SampleVector& samples);
 
 private:
-    unsigned int         m_nchannels;
-    struct _snd_pcm *    m_pcm;
-    std::vector<std::uint8_t> m_bytebuf;
+    LF::audio::AudioBuffer mAudioBuffer;
+    LF::audio::AudioParameters mParameters;
+    LF::audio::AudioBufferPlayer mPlayer;
 };
-
 #endif
