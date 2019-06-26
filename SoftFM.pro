@@ -6,10 +6,10 @@ CONFIG -= qt
 INCLUDEPATH += ../Common/System ../Common/Multimedia
 
 SOURCES += \
-        AudioOutput.cc \
-        Filter.cc \
-        FmDecode.cc \
-        RtlSdrSource.cc \
+        AudioOutput.cpp \
+        Filter.cpp \
+        FmDecode.cpp \
+        RtlSdrSource.cpp \
         main.cpp
 
 HEADERS += \
