@@ -5,13 +5,29 @@
 
 #include "RtlSdrSource.h"
 
+/********** DEBUG SETUP **********/
+//#define ENABLE_SDEBUG
+#define DEBUG_PREFIX "RtlSdrSource: "
+#include "utils/singleton.h"
+#include "utils/screenlogger.h"
+/*********************************/
+
+#define LF_ASSERT_ON
+#include "utils/assert.h"
+
 using namespace std;
 
+void rtlsdrsrc_callback(unsigned char* buf, uint32_t len, void* ctx)
+{
+    RtlSdrSource* rtlsdr = reinterpret_cast<RtlSdrSource*>(ctx);
+    rtlsdr->DongleCallback(buf, len);
+}
 
 // Open RTL-SDR device.
-RtlSdrSource::RtlSdrSource(int dev_index)
-    : m_dev(0)
-    , m_block_length(default_block_length)
+RtlSdrSource::RtlSdrSource(int dev_index, bool async) :
+    mAsync(async),
+    m_dev(0),
+    m_block_length(default_block_length)
 {
     int r;
 
@@ -24,6 +40,11 @@ RtlSdrSource::RtlSdrSource(int dev_index)
         m_error =  "Failed to open RTL-SDR device (";
         m_error += strerror(-r);
         m_error += ")";
+    }
+
+    if (mAsync)
+    {
+        mSampleBuffer = new LF::utils::SWSRLFList<SampleBufferBlock>("RtlSdrSourceSampleBuffer");
     }
 }
 
@@ -102,6 +123,31 @@ bool RtlSdrSource::configure(uint32_t sample_rate,
     return true;
 }
 
+bool RtlSdrSource::StartAsync()
+{
+    bool ret = false;
+    if (mAsync && !mThread)
+    {
+        mThread = new std::thread(&RtlSdrSource::DongleThread, this, nullptr);
+        ret = true;
+    }
+    return ret;
+}
+
+bool RtlSdrSource::StopAsync()
+{
+    bool ret = false;
+    if (mAsync && mThread)
+    {
+        rtlsdr_cancel_async(m_dev);
+        mThread->join();
+        delete mThread;
+        mThread = nullptr;
+        ret = true;
+    }
+    return ret;
+}
+
 
 // Return current sample frequency in Hz.
 uint32_t RtlSdrSource::get_sample_rate()
@@ -144,7 +190,7 @@ bool RtlSdrSource::get_samples(IQSampleVector& samples)
 {
     int r, n_read;
 
-    if (!m_dev)
+    if (!m_dev || mAsync)
         return false;
 
     vector<uint8_t> buf(2 * m_block_length);
@@ -187,6 +233,56 @@ vector<string> RtlSdrSource::get_device_names()
     }
 
     return result;
+}
+
+void RtlSdrSource::DongleThread(void*)
+{
+    SDEB("Started DongleThread");
+    rtlsdr_read_async(m_dev, rtlsdrsrc_callback, this, 0, 0);
+    SDEB("Stopped DongleThread");
+}
+
+void RtlSdrSource::DongleCallback(uint8_t* buf, size_t len)
+{
+    SDEB("+");
+//    auto* s = &mDongleState;
+//    struct demod_state *d = s->demod_target;
+
+    size_t iqSamples = len / 2;
+    SampleBufferBlock* block = mSampleBuffer->GetBlockToWrite();
+    if (block)
+    {
+        for (size_t i = 0; i < iqSamples; ++i)
+        {
+            int32_t re = buf[2 * i];
+            int32_t im = buf[2 * i + 1];
+            block->samples[i] = IQSample((re - 128) / IQSample::value_type(128),
+                                         (im - 128) / IQSample::value_type(128));
+        }
+//        if (s->mute)
+//        {
+//            for (i=0; i<s->mute; i++)
+//            {
+//                buf[i] = 127;
+//            }
+//            s->mute = 0;
+//        }
+//        if (!s->offset_tuning)
+//        {
+//            rotate_90(buf, len);
+//        }
+//        for (int i = 0; i < (int)len; i++)
+//        {
+//            block->buf16[i] = (int16_t)buf[i] - 127;
+//        }
+//        block->len = len;
+        mSampleBuffer->UpdateWriteState();
+    }
+    else
+    {
+        SWAR("SampleBuffer is full");
+    }
+    NEW_DATA.Emit(this);
 }
 
 /* end */

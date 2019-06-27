@@ -1,21 +1,48 @@
-#ifndef SOFTFM_RTLSDRSOURCE_H
-#define SOFTFM_RTLSDRSOURCE_H
+#pragma once
 
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <thread>
+
+#include "threads/signals.h"
+#include "utils/swsrlflist.h"
 
 #include "SoftFM.h"
 
+#define MAXIMUM_OVERSAMPLE 16
+#define DEFAULT_BUF_LENGTH (1 * 16384)
+#define MAXIMUM_BUF_LENGTH (MAXIMUM_OVERSAMPLE * DEFAULT_BUF_LENGTH)
+
+class SampleBufferBlock : public LF::utils::SWSRLFListBlock
+{
+public:
+    IQSample samples[MAXIMUM_BUF_LENGTH];
+    int size;
+};
+
+//class IQSampleSource
+//{
+//public:
+//    virtual ~SampleSource() {}
+//    virtual bool Start() = 0;
+////    SampleSource();
+//    Signal<void(SampleSource*)> NEW_DATA;
+
+//    virtual BufferBlock* GetBlockToRead() = 0;
+//    virtual void UpdateReadState() = 0;
+//};
 
 class RtlSdrSource
 {
 public:
 
+    Signal<void(RtlSdrSource*)> NEW_DATA;
+
     static const int default_block_length = 65536;
 
     /** Open RTL-SDR device. */
-    RtlSdrSource(int dev_index);
+    RtlSdrSource(int dev_index, bool async = false);
 
     /** Close RTL-SDR device. */
     ~RtlSdrSource();
@@ -35,6 +62,9 @@ public:
                    int tuner_gain,
                    int block_length=default_block_length,
                    bool agcmode=false);
+
+    bool StartAsync();
+    bool StopAsync();
 
     /** Return current sample frequency in Hz. */
     std::uint32_t get_sample_rate();
@@ -80,10 +110,17 @@ public:
     static std::vector<std::string> get_device_names();
 
 private:
+    const bool mAsync;
+    LF::utils::SWSRLFList<SampleBufferBlock>* mSampleBuffer { nullptr };
+    std::thread* mThread { nullptr };
+
+    void DongleThread(void*);
+    void DongleCallback(uint8_t* buf, size_t len);
+
     struct rtlsdr_dev * m_dev;
     int                 m_block_length;
     std::string         m_devname;
     std::string         m_error;
-};
 
-#endif
+    friend void rtlsdrsrc_callback(unsigned char* buf, uint32_t len, void* ctx);
+};

@@ -29,8 +29,6 @@
 #include <cerrno>
 #include <algorithm>
 
-//#include <alsa/asoundlib.h>
-
 #include "SoftFM.h"
 #include "AudioOutput.h"
 

@@ -39,6 +39,8 @@
 #include "FmDecode.h"
 #include "AudioOutput.h"
 
+#include "utils/systemutils.h"
+
 #define strsignal(x) "TODO"
 
 using namespace std;
@@ -359,9 +361,12 @@ int main(int argc, char **argv)
             case 's':
                 // NOTE: RTL does not support some sample rates below 900 kS/s
                 // Also, max sampling rate is 3.2 MS/s
-                if (!parse_dbl(optarg, ifrate) ||
-                     (ifrate < 225001) || (ifrate > 3200000) ||
-                     ((ifrate > 300000) && (ifrate < 900001))) {
+                if (!parse_dbl(optarg, ifrate))
+                {
+                    badarg("-s");
+                }
+                if ((ifrate < 225001) || (ifrate > 3200000) || ((ifrate > 300000) && (ifrate < 900001)))
+                {
                     badarg("-s");
                 }
                 break;
@@ -482,14 +487,12 @@ int main(int argc, char **argv)
     if (lnagain == INT_MIN)
         fprintf(stderr, "LNA gain:          auto\n");
     else
-        fprintf(stderr, "LNA gain:          %.1f dB\n",
-                0.1 * rtlsdr.get_tuner_gain());
+        fprintf(stderr, "LNA gain:          %.1f dB\n", 0.1 * rtlsdr.get_tuner_gain());
 
     ifrate = rtlsdr.get_sample_rate();
     fprintf(stderr, "IF sample rate:    %.0f Hz\n", ifrate);
 
-    fprintf(stderr, "RTL AGC mode:      %s\n",
-            agcmode ? "enabled" : "disabled");
+    fprintf(stderr, "RTL AGC mode:      %s\n", agcmode ? "enabled" : "disabled");
 
     // Create source data queue.
     DataBuffer<IQSample> source_buffer;
@@ -629,7 +632,8 @@ int main(int argc, char **argv)
 
         // Show statistics.
         fprintf(stderr,
-                "\rblk=%6d  freq=%8.4fMHz  IF=%+5.1fdB  BB=%+5.1fdB  audio=%+5.1fdB ",
+                "\rcpu=% 2.2f  blk=%6d  freq=%8.4fMHz  IF=%+5.1fdB  BB=%+5.1fdB  audio=%+5.1fdB ",
+                LF::utils::GetCpuUsage() * 100,
                 block,
                 (tuner_freq + fm.get_tuning_offset()) * 1.0e-6,
                 20*log10(fm.get_if_level()),

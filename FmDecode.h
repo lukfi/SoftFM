@@ -106,11 +106,11 @@ private:
 class FmDecoder
 {
 public:
-    static const double default_deemphasis   ;
-    static const double default_bandwidth_if ;
-    static const double default_freq_dev     ;
+    static const double default_deemphasis;
+    static const double default_bandwidth_if;
+    static const double default_freq_dev;
     static const double default_bandwidth_pcm;
-    static const double pilot_freq           ;
+    static const double pilot_freq;
 
     /**
      * Construct FM decoder.
