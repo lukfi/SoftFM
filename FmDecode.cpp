@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "FmDecode.h"
+#include "fastatan2.h"
 
 #include "utils/profiler.h"
 
@@ -16,29 +17,29 @@ const double FmDecoder::default_bandwidth_pcm =  15000;
 const double FmDecoder::pilot_freq            =  19000;
 
 /** Fast approximation of atan function. */
-static inline Sample fast_atan(Sample x)
-{
-    // http://stackoverflow.com/questions/7378187/approximating-inverse-trigonometric-funcions
+//static inline Sample fast_atan(Sample x)
+//{
+//    // http://stackoverflow.com/questions/7378187/approximating-inverse-trigonometric-funcions
 
-    Sample y = 1;
-    Sample p = 0;
+//    Sample y = 1;
+//    Sample p = 0;
 
-    if (x < 0) {
-        x = -x;
-        y = -1;
-    }
+//    if (x < 0) {
+//        x = -x;
+//        y = -1;
+//    }
 
-    if (x > 1) {
-        p = y;
-        y = -y;
-        x = 1 / x;
-    }
+//    if (x > 1) {
+//        p = y;
+//        y = -y;
+//        x = 1 / x;
+//    }
 
-    const Sample b = 0.596227;
-    y *= (b*x + x*x) / (1 + 2*b*x + x*x);
+//    const Sample b = 0.596227;
+//    y *= (b*x + x*x) / (1 + 2*b*x + x*x);
 
-    return (y + p) * Sample(M_PI_2);
-}
+//    return (y + p) * Sample(M_PI_2);
+//}
 
 
 /** Compute RMS level over a small prefix of the specified sample vector. */
@@ -70,7 +71,7 @@ PhaseDiscriminator::PhaseDiscriminator(double max_freq_dev)
 void PhaseDiscriminator::process(const IQSampleVector& samples_in,
                                  SampleVector& samples_out)
 {
-    unsigned int n = samples_in.size();
+    size_t n = samples_in.size();
     IQSample s0 = m_last_sample;
 
     samples_out.resize(n);
@@ -79,7 +80,12 @@ void PhaseDiscriminator::process(const IQSampleVector& samples_in,
         IQSample s1(samples_in[i]);
         IQSample d(conj(s0) * s1);
 // TODO : implement fast approximation of atan2
+#if 1
+        // using fast approximation
+        Sample w = static_cast<Sample>(fastatan2(static_cast<float>(d.imag()), static_cast<float>(d.real())));
+#else
         Sample w = atan2(d.imag(), d.real());
+#endif
         samples_out[i] = w * m_freq_scale_factor;
         s0 = s1;
     }

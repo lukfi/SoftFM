@@ -18,7 +18,8 @@ HEADERS += \
     Filter.h \
     FmDecode.h \
     RtlSdrSource.h \
-    SoftFM.h
+    SoftFM.h \
+    fastatan2.h
 
 win32 {
     INCLUDEPATH += $$PWD/../LFFM/_win/include

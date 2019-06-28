@@ -7,7 +7,8 @@
 typedef std::complex<float> IQSample;
 typedef std::vector<IQSample> IQSampleVector;
 
-typedef double Sample;
+//typedef double Sample;
+typedef float Sample;
 typedef std::vector<Sample> SampleVector;
 
 
