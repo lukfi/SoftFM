@@ -40,6 +40,7 @@
 #include "AudioOutput.h"
 
 #include "utils/systemutils.h"
+#include "threads/threadutils.h"
 
 #define strsignal(x) "TODO"
 
@@ -292,7 +293,7 @@ double get_time()
 }
 
 
-int main(int argc, char **argv)
+int oldmain(int argc, char **argv)
 {
     double  freq    = -1;
     int     devidx  = 0;
@@ -304,7 +305,6 @@ int main(int argc, char **argv)
     enum OutputMode { MODE_RAW, MODE_WAV, MODE_RTAUDIO };
     OutputMode outmode = MODE_RTAUDIO;
     string  filename;
-//    string  alsadev("default");
     string  ppsfilename;
     FILE *  ppsfile = NULL;
     double  bufsecs = -1;
@@ -387,7 +387,7 @@ int main(int argc, char **argv)
                 filename = optarg;
                 break;
             case 'P':
-//                outmode = MODE_ALSA;
+                outmode = MODE_RTAUDIO;
 //                if (optarg != NULL)
 //                    alsadev = optarg;
                 break;

@@ -10,7 +10,8 @@ SOURCES += \
         Filter.cpp \
         FmDecode.cpp \
         RtlSdrSource.cpp \
-        main.cpp
+        mian.cpp \
+        oldmain.cpp
 
 HEADERS += \
     AudioOutput.h \

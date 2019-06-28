@@ -8,7 +8,10 @@
 #include "Filter.h"
 #include "RtlSdrSource.h"
 
+#include "utils/profiler.h"
+
 using namespace std;
+using namespace LF::utils;
 
 
 /** Prepare Lanczos FIR filter coefficients. */
@@ -89,6 +92,7 @@ void FineTuner::process(const IQSampleVector& samples_in,
 
 void FineTuner::Process(const SampleBufferBlock* samples_in, IQSampleVector& samples_out)
 {
+    RTTIProfiler f("FineTuner::Process");
     unsigned int tblidx = m_index;
     unsigned int tblsiz = m_table.size();
     unsigned int n = samples_in->size;
@@ -120,6 +124,7 @@ LowPassFilterFirIQ::LowPassFilterFirIQ(unsigned int filter_order, double cutoff)
 void LowPassFilterFirIQ::process(const IQSampleVector& samples_in,
                                  IQSampleVector& samples_out)
 {
+    RTTIProfiler f("LowPassFilterFirIQ::process");
     unsigned int order = m_state.size();
     unsigned int n = samples_in.size();
 
@@ -189,6 +194,7 @@ DownsampleFilter::DownsampleFilter(unsigned int filter_order, double cutoff,
 void DownsampleFilter::process(const SampleVector& samples_in,
                                SampleVector& samples_out)
 {
+    RTTIProfiler f3("DownsampleFilter::process");
     unsigned int order = m_state.size();
     unsigned int n = samples_in.size();
 

@@ -4,7 +4,10 @@
 
 #include "FmDecode.h"
 
+#include "utils/profiler.h"
+
 using namespace std;
+using namespace LF::utils;
 
 const double FmDecoder::default_deemphasis    =     50;
 const double FmDecoder::default_bandwidth_if  = 100000;
@@ -399,12 +402,14 @@ void FmDecoder::process(const IQSampleVector& samples_in, SampleVector& audio)
 
 void FmDecoder::Process(const SampleBufferBlock* samples_in, SampleVector& audio)
 {
+    RTTIProfiler f1("FmDecoder::Process");
     // Fine tuning.
     m_finetuner.Process(samples_in, m_buf_iftuned);
 
     // Low pass filter to isolate station.
     m_iffilter.process(m_buf_iftuned, m_buf_iffiltered);
 
+    RTTIProfiler f2("FmDecoder::Process2");
     // Measure IF level.
     double if_rms = rms_level_approx(m_buf_iffiltered);
     m_if_level = 0.95 * m_if_level + 0.05 * if_rms;
@@ -412,6 +417,7 @@ void FmDecoder::Process(const SampleBufferBlock* samples_in, SampleVector& audio
     // Extract carrier frequency.
     m_phasedisc.process(m_buf_iffiltered, m_buf_baseband);
 
+    RTTIProfiler f3("FmDecoder::Process3");
     // Downsample baseband signal to reduce processing.
     if (m_downsample > 1) {
         SampleVector tmp(move(m_buf_baseband));
@@ -574,6 +580,7 @@ void FmDecoderThread::OnNewIQSamples(RtlSdrSource*)
 
 void FmDecoderThread::DecodeIQSamples()
 {
+    RTTIProfiler f("FmDecoderThread::DecodeIQSamples");
     if (mDecoder)
     {
         SampleBufferBlock* block = mSource->GetBlockToRead();
