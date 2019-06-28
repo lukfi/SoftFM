@@ -235,6 +235,23 @@ vector<string> RtlSdrSource::get_device_names()
     return result;
 }
 
+SampleBufferBlock* RtlSdrSource::GetBlockToRead()
+{
+    if (mSampleBuffer)
+    {
+        return mSampleBuffer->GetBlockToRead();
+    }
+    return nullptr;
+}
+
+void RtlSdrSource::UpdateReadState()
+{
+    if (mSampleBuffer)
+    {
+        return mSampleBuffer->UpdateReadState();
+    }
+}
+
 void RtlSdrSource::DongleThread(void*)
 {
     SDEB("Started DongleThread");
@@ -259,6 +276,7 @@ void RtlSdrSource::DongleCallback(uint8_t* buf, size_t len)
             block->samples[i] = IQSample((re - 128) / IQSample::value_type(128),
                                          (im - 128) / IQSample::value_type(128));
         }
+        block->size = iqSamples;
 //        if (s->mute)
 //        {
 //            for (i=0; i<s->mute; i++)

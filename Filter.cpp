@@ -6,6 +6,7 @@
 #include <complex>
 
 #include "Filter.h"
+#include "RtlSdrSource.h"
 
 using namespace std;
 
@@ -83,7 +84,25 @@ void FineTuner::process(const IQSampleVector& samples_in,
             tblidx = 0;
     }
 
-    m_index = tblidx; 
+    m_index = tblidx;
+}
+
+void FineTuner::Process(const SampleBufferBlock* samples_in, IQSampleVector& samples_out)
+{
+    unsigned int tblidx = m_index;
+    unsigned int tblsiz = m_table.size();
+    unsigned int n = samples_in->size;
+
+    samples_out.resize(n);
+
+    for (unsigned int i = 0; i < n; i++) {
+        samples_out[i] = samples_in->samples[i] * m_table[tblidx];
+        tblidx++;
+        if (tblidx == tblsiz)
+            tblidx = 0;
+    }
+
+    m_index = tblidx;
 }
 
 

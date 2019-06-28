@@ -18,22 +18,22 @@ class SampleBufferBlock : public LF::utils::SWSRLFListBlock
 {
 public:
     IQSample samples[MAXIMUM_BUF_LENGTH];
-    int size;
+    size_t size;
 };
 
-//class IQSampleSource
-//{
-//public:
+class IQSampleSource
+{
+public:
 //    virtual ~SampleSource() {}
 //    virtual bool Start() = 0;
-////    SampleSource();
+//    SampleSource();
 //    Signal<void(SampleSource*)> NEW_DATA;
 
-//    virtual BufferBlock* GetBlockToRead() = 0;
-//    virtual void UpdateReadState() = 0;
-//};
+    virtual SampleBufferBlock* GetBlockToRead() = 0;
+    virtual void UpdateReadState() = 0;
+};
 
-class RtlSdrSource
+class RtlSdrSource : public IQSampleSource
 {
 public:
 
@@ -108,6 +108,9 @@ public:
 
     /** Return a list of supported devices. */
     static std::vector<std::string> get_device_names();
+
+    SampleBufferBlock* GetBlockToRead() override;
+    void UpdateReadState() override;
 
 private:
     const bool mAsync;

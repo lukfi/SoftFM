@@ -4,6 +4,7 @@
 #include <vector>
 #include "SoftFM.h"
 
+class SampleBufferBlock;
 
 /** Fine tuner which shifts the frequency of an IQ signal by a fixed offset. */
 class FineTuner
@@ -23,6 +24,7 @@ public:
 
     /** Process samples. */
     void process(const IQSampleVector& samples_in, IQSampleVector& samples_out);
+    void Process(const SampleBufferBlock* samples_in, IQSampleVector& samples_out);
 
 private:
     unsigned int    m_index;

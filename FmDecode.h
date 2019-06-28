@@ -7,6 +7,7 @@
 #include "SoftFM.h"
 #include "Filter.h"
 
+class SampleBufferBlock;
 
 /* Detect frequency by phase discrimination between successive samples. */
 class PhaseDiscriminator
@@ -150,8 +151,8 @@ public:
      * signal is detected). If the decoder is set in mono mode, the output
      * vector only contains samples for one channel.
      */
-    void process(const IQSampleVector& samples_in,
-                 SampleVector& audio);
+    void process(const IQSampleVector& samples_in, SampleVector& audio);
+    void Process(const SampleBufferBlock* samples_in, SampleVector& audio);
 
     /** Return true if a stereo signal is detected. */
     bool stereo_detected() const
@@ -236,6 +237,38 @@ private:
     HighPassFilterIir   m_dcblock_stereo;
     LowPassFilterRC     m_deemph_mono;
     LowPassFilterRC     m_deemph_stereo;
+};
+
+#include "threads/iothread.h"
+
+class RtlSdrSource;
+class AudioOutput;
+
+class FmDecoderThread
+{
+public:
+    FmDecoderThread(RtlSdrSource* src,
+                    AudioOutput* output);
+    bool CreateDecoder(double sample_rate_if,
+                       double tuning_offset,
+                       double sample_rate_pcm,
+                       bool   stereo = true,
+                       double deemphasis = 50,
+                       double bandwidth_if = FmDecoder::default_bandwidth_if,
+                       double freq_dev = FmDecoder::default_freq_dev,
+                       double bandwidth_pcm = FmDecoder::default_bandwidth_pcm,
+                       unsigned int downsample = 1);
+
+    ~FmDecoderThread();
+
+private:
+    void OnNewIQSamples(RtlSdrSource*);
+    void DecodeIQSamples();
+
+    LF::threads::IOThread mThread;
+    FmDecoder* mDecoder { nullptr };
+    RtlSdrSource* mSource { nullptr };
+    AudioOutput* mAudioOutput { nullptr };
 };
 
 #endif

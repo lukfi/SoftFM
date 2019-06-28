@@ -325,11 +325,82 @@ FmDecoder::FmDecoder(double sample_rate_if,
 }
 
 
-void FmDecoder::process(const IQSampleVector& samples_in,
-                        SampleVector& audio)
+void FmDecoder::process(const IQSampleVector& samples_in, SampleVector& audio)
 {
     // Fine tuning.
     m_finetuner.process(samples_in, m_buf_iftuned);
+
+    // Low pass filter to isolate station.
+    m_iffilter.process(m_buf_iftuned, m_buf_iffiltered);
+
+    // Measure IF level.
+    double if_rms = rms_level_approx(m_buf_iffiltered);
+    m_if_level = 0.95 * m_if_level + 0.05 * if_rms;
+
+    // Extract carrier frequency.
+    m_phasedisc.process(m_buf_iffiltered, m_buf_baseband);
+
+    // Downsample baseband signal to reduce processing.
+    if (m_downsample > 1) {
+        SampleVector tmp(move(m_buf_baseband));
+        m_resample_baseband.process(tmp, m_buf_baseband);
+    }
+
+    // Measure baseband level.
+    double baseband_mean, baseband_rms;
+    samples_mean_rms(m_buf_baseband, baseband_mean, baseband_rms);
+    m_baseband_mean  = 0.95 * m_baseband_mean + 0.05 * baseband_mean;
+    m_baseband_level = 0.95 * m_baseband_level + 0.05 * baseband_rms;
+
+    // Extract mono audio signal.
+    m_resample_mono.process(m_buf_baseband, m_buf_mono);
+
+    // DC blocking and de-emphasis.
+    m_dcblock_mono.process_inplace(m_buf_mono);
+    m_deemph_mono.process_inplace(m_buf_mono);
+
+    if (m_stereo_enabled) {
+
+        // Lock on stereo pilot.
+        m_pilotpll.process(m_buf_baseband, m_buf_rawstereo);
+        m_stereo_detected = m_pilotpll.locked();
+
+        // Demodulate stereo signal.
+        demod_stereo(m_buf_baseband, m_buf_rawstereo);
+
+        // Extract audio and downsample.
+        // NOTE: This MUST be done even if no stereo signal is detected yet,
+        // because the downsamplers for mono and stereo signal must be
+        // kept in sync.
+        m_resample_stereo.process(m_buf_rawstereo, m_buf_stereo);
+
+        // DC blocking and de-emphasis.
+        m_dcblock_stereo.process_inplace(m_buf_stereo);
+        m_deemph_stereo.process_inplace(m_buf_stereo);
+
+        if (m_stereo_detected) {
+            // Extract left/right channels from mono/stereo signals.
+            stereo_to_left_right(m_buf_mono, m_buf_stereo, audio);
+
+        } else {
+
+            // Duplicate mono signal in left/right channels.
+            mono_to_left_right(m_buf_mono, audio);
+
+        }
+
+    } else {
+
+        // Just return mono channel.
+        audio = move(m_buf_mono);
+
+    }
+}
+
+void FmDecoder::Process(const SampleBufferBlock* samples_in, SampleVector& audio)
+{
+    // Fine tuning.
+    m_finetuner.Process(samples_in, m_buf_iftuned);
 
     // Low pass filter to isolate station.
     m_iffilter.process(m_buf_iftuned, m_buf_iffiltered);
@@ -449,3 +520,69 @@ void FmDecoder::stereo_to_left_right(const SampleVector& samples_mono,
 }
 
 /* end */
+
+#include "RtlSdrSource.h"
+#include "AudioOutput.h"
+
+FmDecoderThread::FmDecoderThread(RtlSdrSource* src, AudioOutput* output) :
+    mSource(src),
+    mAudioOutput(output)
+{
+    mThread.Start();
+    CONNECT(mSource->NEW_DATA, FmDecoderThread, OnNewIQSamples, this);
+}
+
+bool FmDecoderThread::CreateDecoder(double sample_rate_if,
+                                    double tuning_offset,
+                                    double sample_rate_pcm,
+                                    bool stereo,
+                                    double deemphasis,
+                                    double bandwidth_if,
+                                    double freq_dev,
+                                    double bandwidth_pcm,
+                                    unsigned int downsample)
+{
+    bool ret = false;
+
+    if (mDecoder == nullptr)
+    {
+        mDecoder = new FmDecoder(sample_rate_if,
+                                 tuning_offset,
+                                 sample_rate_pcm,
+                                 stereo,
+                                 deemphasis,
+                                 bandwidth_if,
+                                 freq_dev,
+                                 bandwidth_pcm,
+                                 downsample);
+        ret = true;
+    }
+
+    return ret;
+}
+
+FmDecoderThread::~FmDecoderThread()
+{
+    mThread.Stop();
+}
+
+void FmDecoderThread::OnNewIQSamples(RtlSdrSource*)
+{
+    SCHEDULE_TASK(&mThread, &FmDecoderThread::DecodeIQSamples, this);
+
+}
+
+void FmDecoderThread::DecodeIQSamples()
+{
+    if (mDecoder)
+    {
+        SampleBufferBlock* block = mSource->GetBlockToRead();
+        if (block)
+        {
+            SampleVector audio;
+            mDecoder->Process(block, audio);
+            mSource->UpdateReadState();
+            mAudioOutput->write(audio);
+        }
+    }
+}
