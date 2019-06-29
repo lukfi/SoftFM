@@ -4,13 +4,12 @@
 #include <complex>
 #include <vector>
 
-typedef std::complex<float> IQSample;
-typedef std::vector<IQSample> IQSampleVector;
-
 //typedef double Sample;
 typedef float Sample;
 typedef std::vector<Sample> SampleVector;
 
+typedef std::complex<Sample> IQSample;
+typedef std::vector<IQSample> IQSampleVector;
 
 /** Compute mean and RMS over a sample vector. */
 inline void samples_mean_rms(const SampleVector& samples,
