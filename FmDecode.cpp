@@ -6,6 +6,14 @@
 #include "fastatan2.h"
 
 #include "utils/profiler.h"
+#include "utils/systemutils.h"
+
+/********** DEBUG SETUP **********/
+#define ENABLE_SDEBUG
+#define DEBUG_PREFIX "RtlSdrSource: "
+#include "utils/singleton.h"
+#include "utils/screenlogger.h"
+/*********************************/
 
 using namespace std;
 using namespace LF::utils;
@@ -592,10 +600,28 @@ void FmDecoderThread::DecodeIQSamples()
         SampleBufferBlock* block = mSource->GetBlockToRead();
         if (block)
         {
+            ++mBlocks;
+
             SampleVector audio;
             mDecoder->Process(block, audio);
             mSource->UpdateReadState();
             mAudioOutput->write(audio);
+            if (mPrintStats)
+            {
+                PRINT("\rblk=%6d  freq=%8.4fMHz  IF=%+5.1fdB  BB=%+5.1fdB  ",
+                      mBlocks,
+                      (mSource->get_frequency() + mDecoder->get_tuning_offset()) * 1.0e-6,
+                      20 * log10(mDecoder->get_if_level()),
+                      20 * log10(mDecoder->get_baseband_level()) + 3.01);
+                if (mDecoder->stereo_detected())
+                {
+                    PRINT("stereo (level: %.4f)", mDecoder->get_pilot_level());
+                }
+                else
+                {
+                    PRINT("                      ");
+                }
+            }
         }
     }
 }

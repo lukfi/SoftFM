@@ -269,6 +269,9 @@ private:
     FmDecoder* mDecoder { nullptr };
     RtlSdrSource* mSource { nullptr };
     AudioOutput* mAudioOutput { nullptr };
+
+    bool mPrintStats { true };
+    uint32_t mBlocks { 0 };
 };
 
 #endif

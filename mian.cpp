@@ -11,6 +11,7 @@
 #include "FmDecode.h"
 
 #include "threads/threadutils.h"
+#include "utils/profiler.h"
 
 /********** DEBUG SETUP **********/
 #define ENABLE_SDEBUG
@@ -54,6 +55,8 @@ int main(int argc, char **argv)
 #ifdef USE_OLD_MAIN
     oldmain(argc, argv);
 #else
+    LF::utils::Profiler::SetEnabled(false);
+
     double  freq    = -1;
     int     devidx  = 0;
     int     lnagain = INT_MIN;

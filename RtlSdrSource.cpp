@@ -277,14 +277,6 @@ void RtlSdrSource::DongleCallback(uint8_t* buf, size_t len)
                                          (im - 128) / IQSample::value_type(128));
         }
         block->size = iqSamples;
-//        if (s->mute)
-//        {
-//            for (i=0; i<s->mute; i++)
-//            {
-//                buf[i] = 127;
-//            }
-//            s->mute = 0;
-//        }
 //        if (!s->offset_tuning)
 //        {
 //            rotate_90(buf, len);
