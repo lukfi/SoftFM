@@ -32,6 +32,13 @@
 #include "SoftFM.h"
 #include "AudioOutput.h"
 
+/********** DEBUG SETUP **********/
+#define ENABLE_SDEBUG
+#define DEBUG_PREFIX "AudioOutput: "
+#include "utils/singleton.h"
+#include "utils/screenlogger.h"
+/*********************************/
+
 using namespace std;
 
 #define assert(X)
@@ -286,7 +293,12 @@ RtAudioOutput::RtAudioOutput(unsigned int samplerate, bool stereo) :
     mPlayer.SetEndOfEmptyBuffer(false);
     mPlayer.SetBuffer(&mAudioBuffer);
     auto api = LF::audio::AudioDevice::GetDefaultApi();
-    mPlayer.SetOutputDevice(api, LF::audio::AudioDevice::GetDefaultOutDeviceId(api));
+    auto id = LF::audio::AudioDevice::GetDefaultOutDeviceId(api);
+#if M_OS == M_OS_LINUX
+    mPlayer.SetOutputDevice(LF::audio::AudioApi::LINUX_ALSA, 1);
+#else
+     mPlayer.SetOutputDevice(api, id);
+#endif
     mPlayer.Start();
 }
 

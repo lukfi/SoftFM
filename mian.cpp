@@ -336,6 +336,6 @@ int main(int argc, char **argv)
                       downsample);
     rtlsdr.StartAsync();
 
-    LF::threads::SleepSec(100);
+    LF::threads::SleepSec(10000);
 #endif
 }

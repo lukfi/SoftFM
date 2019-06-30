@@ -27,6 +27,10 @@ win32 {
     LIBS += -L$$PWD/../LFFM/_win/lib
 }
 
+unix {
+    LIBS += -lpulse-simple -lpulse -lasound
+}
+
 LIBS += -L../CommonLibs/debug
 LIBS += -lrtlsdr -lpthread -lMultimedia -lSystem
 
