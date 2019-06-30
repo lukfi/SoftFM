@@ -108,12 +108,21 @@ public:
     /** Process samples. */
     void process(const SampleVector& samples_in, SampleVector& samples_out);
 
+    /** Process interleaved samples. */
+    void process_interleaved(const SampleVector& samples_in, SampleVector& samples_out);
+
     /** Process samples in-place. */
     void process_inplace(SampleVector& samples);
 
+    /** Process interleaved samples in-place. */
+    void process_interleaved_inplace(SampleVector& samples);
+
 private:
     double  m_timeconst;
-    Sample  m_y1;
+    Sample  m_a1;
+    Sample  m_b0;
+    Sample  m_y0_1;
+    Sample  m_y1_1;
 };
 
 
